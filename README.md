@@ -1,0 +1,1 @@
+# LAVORO_DI_GRUPPO
