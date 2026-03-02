@@ -15,6 +15,9 @@ if (file_exists(__DIR__ . '/../.env')) {
 }
 
 $app = AppFactory::create();
+$app->setBasePath((function () {
+    return str_replace('/index.php', '', $_SERVER['SCRIPT_NAME']);
+})());
 
 // Middleware per gestire gli errori
 $errorMiddleware = $app->addErrorMiddleware(true, true, true);

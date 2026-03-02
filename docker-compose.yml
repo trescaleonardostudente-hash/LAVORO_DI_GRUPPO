@@ -6,6 +6,9 @@ services:
     container_name: forniture_db
     environment:
       MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: DB_pezzi
+      MYSQL_USER: bertu
+      MYSQL_PASSWORD: bertu
     ports:
       - "3306:3306"
     volumes:
@@ -16,6 +19,31 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
+
+  php:
+    image: php:8.2-apache
+    container_name: forniture_app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./public:/var/www/html
+      - .:/var/www/app
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: DB_pezzi
+      DB_USER: bertu
+      DB_PASS: bertu
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: >
+      bash -c "
+        docker-php-ext-install pdo pdo_mysql &&
+        a2enmod rewrite &&
+        echo 'ServerName localhost' >> /etc/apache2/apache2.conf &&
+        apache2-foreground
+      "
 
 volumes:
   mysql_data:

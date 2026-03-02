@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Forniture - Query Viewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: var(--bs-tertiary-bg); }
+        .app-card { max-width: 980px; margin: 0 auto; }
+        pre { white-space: pre-wrap; word-break: break-word; }
+    </style>
+</head>
+<body>
+<div class="container py-4 py-md-5">
+    <div class="card shadow-sm border-0 app-card">
+        <div class="card-body p-4 p-md-5">
+            <h1 class="h3 mb-1">Forniture Query Viewer</h1>
+            <p class="text-secondary mb-4">Scegli una query, esegui e guarda il risultato.</p>
+
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label for="querySelect" class="form-label">Query</label>
+                    <select id="querySelect" class="form-select">
+                        <option value="1">1 - Pezzi forniti</option>
+                        <option value="2">2 - Fornitori tutti i pezzi</option>
+                        <option value="3">3 - Fornitori per colore</option>
+                        <option value="4">4 - Pezzi esclusivi fornitore</option>
+                        <option value="5">5 - Fornitori sopra media</option>
+                        <option value="6">6 - Fornitori max prezzo</option>
+                        <option value="7">7 - Fornitori solo colore</option>
+                        <option value="8">8 - Fornitori con due colori (AND)</option>
+                        <option value="9">9 - Fornitori almeno un colore (OR)</option>
+                        <option value="10">10 - Pezzi multi-fornitore</option>
+                        <option value="all">ALL - Tutte le query</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-5" id="paramsArea"></div>
+                <div class="col-12 col-md-2 d-grid">
+                    <button id="runBtn" class="btn btn-primary">Esegui</button>
+                </div>
+            </div>
+
+            <div id="alertBox" class="mt-3"></div>
+            <div id="resultBox" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const querySelect = document.getElementById('querySelect');
+const paramsArea = document.getElementById('paramsArea');
+const runBtn = document.getElementById('runBtn');
+const resultBox = document.getElementById('resultBox');
+const alertBox = document.getElementById('alertBox');
+
+const paramConfig = {
+    '3': [{ key: 'colore', label: 'Colore', value: 'rosso' }],
+    '4': [{ key: 'fornitore', label: 'Fornitore', value: 'Acme' }],
+    '7': [{ key: 'colore', label: 'Colore', value: 'rosso' }],
+    '8': [{ key: 'colore1', label: 'Colore 1', value: 'rosso' }, { key: 'colore2', label: 'Colore 2', value: 'verde' }],
+    '9': [{ key: 'colore1', label: 'Colore 1', value: 'rosso' }, { key: 'colore2', label: 'Colore 2', value: 'verde' }],
+    '10': [{ key: 'min_fornitori', label: 'Min fornitori', value: '2' }]
+};
+
+function renderParams() {
+    const selected = querySelect.value;
+    const fields = paramConfig[selected] || [];
+
+    if (!fields.length) {
+        paramsArea.innerHTML = '<div class="text-secondary small pt-2">Nessun parametro richiesto</div>';
+        return;
+    }
+
+    paramsArea.innerHTML = fields.map(f => `
+        <div class="mb-2">
+            <label class="form-label">${f.label}</label>
+            <input class="form-control param-input" data-key="${f.key}" value="${f.value}">
+        </div>
+    `).join('');
+}
+
+function buildPath() {
+    const selected = querySelect.value;
+    
+    // Rimuovi lo slash iniziale prima di ${selected}
+    let base = (selected === 'all') ? 'all' : selected; 
+
+    const params = new URLSearchParams();
+    document.querySelectorAll('.param-input').forEach(input => {
+        const value = input.value.trim();
+        if (value) params.set(input.dataset.key, value);
+    });
+
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+}
+
+    const base = `/${selected}`;
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+}
+
+function renderTable(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+        resultBox.innerHTML = '<div class="alert alert-warning mb-0">Nessun risultato.</div>';
+        return;
+    }
+
+    const columns = Object.keys(rows[0]);
+    const header = columns.map(c => `<th>${c}</th>`).join('');
+    const body = rows.map(row => `<tr>${columns.map(c => `<td>${row[c]}</td>`).join('')}</tr>`).join('');
+
+    resultBox.innerHTML = `
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered align-middle mb-0">
+                <thead class="table-dark"><tr>${header}</tr></thead>
+                <tbody>${body}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+function renderAll(results) {
+    const keys = Object.keys(results || {});
+    if (!keys.length) {
+        resultBox.innerHTML = '<div class="alert alert-warning mb-0">Nessun risultato.</div>';
+        return;
+    }
+
+    resultBox.innerHTML = `
+        <div class="card border-0 bg-body-tertiary">
+            <div class="card-body">
+                <pre class="mb-0 small">${JSON.stringify(results, null, 2)}</pre>
+            </div>
+        </div>
+    `;
+}
+
+function showError(message) {
+    alertBox.innerHTML = `<div class="alert alert-danger mb-0">${message}</div>`;
+}
+
+function clearError() {
+    alertBox.innerHTML = '';
+}
+
+runBtn.addEventListener('click', async () => {
+    clearError();
+    resultBox.innerHTML = '<div class="text-secondary">Caricamento…</div>';
+
+    const path = buildPath();
+
+    try {
+        const response = await fetch(path);
+        const json = await response.json();
+
+        if (!response.ok) {
+            showError(json.error || `Errore HTTP ${response.status}`);
+            resultBox.innerHTML = '';
+            return;
+        }
+
+        if (querySelect.value === 'all') {
+            renderAll(json.results || {});
+            return;
+        }
+
+        renderTable(json.data || []);
+    } catch (error) {
+        showError(`Errore di rete: ${error.message}`);
+        resultBox.innerHTML = '';
+    }
+});
+
+querySelect.addEventListener('change', renderParams);
+renderParams();
+</script>
+</body>
+</html>
