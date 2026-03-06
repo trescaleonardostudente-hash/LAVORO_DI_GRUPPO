@@ -3,6 +3,19 @@
 # Uscita immediata se un comando fallisce
 set -e
 
+
+# aggiungi la chiave ufficiale (puoi usare curl o apt-key)
+curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo gpg --dearmour -o /usr/share/keyrings/yarn-archive-keyring.gpg
+
+# oppure, se usi apt-key (deprecato ma ancora usabile):
+# curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+
+# assicurati che la riga di sources.list punti al “signed-by” corretto:
+echo "deb [signed-by=/usr/share/keyrings/yarn-archive-keyring.gpg] https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+
+# quindi aggiorna
+sudo apt update
+
 # CONFIGURA QUI IL TUO UTENTE E PASSWORD
 PMA_USER="user"
 PMA_PASS="admin"
